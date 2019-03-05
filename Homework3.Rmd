@@ -1,0 +1,181 @@
+---
+title: "Homework 3 (STAT 5860)"
+author: "Eric Pettengill"
+date: "Due by 11:59 pm, Feb. 24, 2018"
+output:
+  pdf_document: default
+  word_document: default
+---
+
+## Instructions:
+
+1. Download the `Homework3.Rmd` file from the course Elearning.
+
+2. Open `Homework3.Rmd` in RStudio.
+
+3. Replace the *"Your Name Here"* text in the `author` with your own name.
+
+4. Write your answer to each problem by editing `Homework3.Rmd`.
+
+5. After you finish all the problems, click `Knit to PDF` to create a pdf file. Upload your pdf file to Homework 1 Dropbox in the course Elearning.
+
+### Set the seed number
+```{r}
+set.seed(224)
+```
+
+### Problem 1. The Rayleigh distribution is used to model lifetime subject to rapid aging, because the hazard rate is linearly increasing. The Rayleigh density is
+$$
+f(x) = \frac{x}{\sigma^2}e^{-x^2/(2\sigma^2)}, \quad x \geq 0, \sigma > 0.
+$$
+
+###### (a) Use the Metropolis-Hastings algorithm to generate a random sample of size 10000 from the Rayleigh $(\sigma = 2)$ distribution. Use the proposal distribution $\mbox{Gamma}(X_{t}, 1)$ (shape parameter $X_{t}$ and rate parameter 1). (Hint: Use \texttt{rgamma()} and \texttt{dgamma()})
+```{r}
+n <- 10000
+x <- rep(0,n)
+
+rayliegh <- function(x) {
+  (x/4)*exp(-x^2/8)
+}
+
+q <- function(x) {
+  rgamma(1, shape = x, rate = 1)
+}
+
+x[1] <- 5
+
+for (i in 1:n) {
+  xp <- q(x[i])
+  alpha <- min(1, (rayliegh(xp)*dgamma(x[i], 
+                                       shape = xp, 
+                                       rate = 1))/(rayliegh(x[i])*dgamma(xp, 
+                                                                         shape = x[i], 
+                                                                         rate = 1)))
+  if (runif(1) < alpha){
+		x[i+1] <- xp
+	}
+	else{
+		x[i+1] <- x[i]
+	}	
+}
+
+```
+
+###### (b) Plot the density histogram of the sample and add the theoretical density curve $f(x)$ to the density histogoram.
+```{r, fig.width = 5, fig.height = 4}
+hist(x, prob = TRUE, xlab = "", ylab = "", breaks = 50)
+lines(seq(0,10,.01), rayliegh(seq(0,10,.01)))
+```
+
+###### (c) Find the Monte Carlo estimate of $\mathrm{E}_{f}(X)$ and draw a plot to show the convergence of the MCMC approximation.
+```{r, fig.width = 4, fig.height = 4}
+mean(x)
+
+
+n <- 10000
+q <- rgamma(n, shape = 5, rate = 1)
+
+plot(cumsum(q*rayliegh(q)/dgamma(q, shape = 5, rate = 1))/(1:n),
+     ylab = "",
+     type = "l")
+```
+
+### Problem 2. The Cauchy distribution has density function
+$$
+f(x) = \frac{1}{\theta\pi\left[1 + \left(\frac{x-\eta}{\theta}\right)^2\right]}, \quad -\infty < x < \infty, \theta > 0.
+$$
+
+###### (a) Use the Metropolis algorithm to generate a random sample of size 10000 from the Cauchy distribuiton $(\theta = 2, \eta = 0)$. Here $\theta$ is scale parameter and $\eta$ is location parameter.
+```{r}
+n <- 10000
+x <- rep(0,n)
+
+cauch <- function(x) {
+  1/(2*pi*(1+(x^2/4)))
+}
+
+q <- function(x) {
+  rnorm(1, mean = x, sd = 4)
+}
+
+x[1] <- 0
+
+for (i in 1:n) {
+  xp <- q(x[i])
+  alpha <- min(1, cauch(xp)/(cauch(x[i])))
+  if (runif(1) < alpha){
+		x[i+1] <- xp
+	}
+	else{
+		x[i+1] <- x[i]
+	}
+}
+
+```
+
+###### (b) Compute the sample percentiles and compare with the Cauchy distribution $(\theta = 2, \eta = 0)$ percentiles. (Hint: Use \texttt{qcauchy()})
+```{r, fig.width = 4, fig.height = 4}
+p <- seq(0.1,0.9, 0.01)
+Qhat <- quantile(x,p)
+Q <- qcauchy(p, scale = 2, location = 0)
+
+plot(Q,Qhat)
+```
+
+
+### Problem 3. Let $X$ = the number of heads obtained from flipping a fair coin four times. Here, we have that there are 4 trials, ``success'' is defined as getting a head face-up with probability of 0.5 for each trial, and the outcome of one trial doesn't affect another. 
+
+###### (a) Use the Metropolis algorithm to simulate $X$, 50000 times. 
+```{r}
+n <- 50000
+x <- rep(0,n)
+mass <- dbinom(0:4, 4, .5)
+
+S <- c(1:5)
+Q <- matrix(rep(.2, 25), nrow = 5, ncol = 5)
+
+x[1] <- 2
+
+for(i in 1:n){
+	xp <- sample(S, 1, prob = Q[x[i], ])
+	alpha <- min(1, mass[xp]/mass[x[i]])
+	if (runif(1) < alpha){
+		x[i+1] <- xp
+	}
+	else{
+		x[i+1] <- x[i]
+	}
+}
+
+table(x)/(n+1)
+```
+
+###### (b) Find the Monte Carlo estimate of $\mathrm{E}(X)$.
+
+$$E(X) = np = 4(.5) = 2$$
+
+```{r}
+n <- 50000
+u <- runif(n)
+
+z <- rbinom(u, 4, .5)
+
+mean(z)
+
+```
+
+
+
+###### (c) Find the Monte Carlo estimate of $\mbox{Var}(X)$. (Hint: $\mbox{Var}(X) = \mathrm{E}(X^2) - (\mathrm{E}(X))^2$)
+
+$$Var(X) = np(1-p) = 4(.5)(.5) = 1$$
+
+```{r}
+n <- 50000
+u <- runif(n)
+
+z <- rbinom(u, 4, .5)
+
+mean((z - mean(z))^2)
+```
+

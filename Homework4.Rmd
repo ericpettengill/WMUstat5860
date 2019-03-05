@@ -1,0 +1,160 @@
+---
+title: "Homework 4 (STAT 5860)"
+author: "Eric Pettengill"
+output:
+  pdf_document: default
+---
+
+## Instructions:
+
+1. Download the `Homework4.Rmd` file from the course Elearning.
+
+2. Open `Homework4.Rmd` in RStudio.
+
+3. Replace the *"Your Name Here"* text in the `author` with your own name.
+
+4. Write your answer to each problem by editing `Homework4.Rmd`.
+
+5. After you finish all the problems, click `Knit to PDF` to create a pdf file. Upload your pdf file to Homework 4 Dropbox in the course Elearning.
+
+### Set the seed number
+```{r}
+set.seed(328)
+```
+
+### Problem 1. Consider the data set \texttt{scor}. The data set is available after loading the \texttt{bootstrap} package. The data set consists test score on 88 students who took examinations in five subjects. The first two tests (mechanics, vectors) were closed book and the last three tests (algebra, analysis, statistics) were open book. Each row of the data frame is a set of scores for the $i$th student.  
+
+###### (a) First obtain each of the following sample corrleations: $\hat{\rho}_{12} = \hat{\rho}(\mbox{mec}, \mbox{vec})$, $\hat{\rho}_{35} = \hat{\rho}(\mbox{alg}, \mbox{sta})$, and $\hat{\rho}_{45} = \hat{\rho}(\mbox{ana}, \mbox{sta})$.
+```{r, message=FALSE, warning=FALSE}
+library(bootstrap)
+library(boot)
+
+rho12 <- cor(scor$mec, scor$vec)
+rho35 <- cor(scor$alg, scor$sta)
+rho45 <- cor(scor$ana, scor$sta)
+
+c(rho12, rho35, rho45)
+```
+
+###### (b) Obtain bootstrap estimates of standard errors for each of the sample correlation in (a). Use 2000 bootstrap samples.
+```{r}
+correlation12 <- function(x, index){
+	cor(x[index,1], x[index,2])
+}
+
+correlation35 <- function(x, index){
+	cor(x[index,3], x[index,5])
+}
+
+correlation45 <- function(x, index){
+	cor(x[index,4], x[index,5])
+}
+
+cor12 <- boot(data = scor, statistic = correlation12, R = 2000)
+cor35 <- boot(data = scor, statistic = correlation35, R = 2000)
+cor45 <- boot(data = scor, statistic = correlation45, R = 2000)
+
+list(cor12, cor35, cor45)
+```
+
+###### (c) Obtain the jackknife estimates of standard errors for each of the sample correlation in (a).
+```{r}
+n <- nrow(scor)
+cor.jack <- matrix(0, n, ncol = 3)
+for(i in 1:n){
+	cor.jack[i,1] <- cor(scor[-i,1], scor[-i,2])
+	cor.jack[i,2] <- cor(scor[-i,3], scor[-i,5])
+	cor.jack[i,3] <- cor(scor[-i,4], scor[-i,5])
+}
+
+head(cor.jack)
+
+jack.se <- function(data){
+  sqrt(((length(data)-1)/length(data))*sum((data - mean(data))^2))
+}
+
+apply(cor.jack, 2, jack.se)
+```
+
+###### (d) Comptue 95\% percentile bootstrap confidence intervals and $\mbox{BC}_{a}$ bootstrap confidence intervals for each of the sample correlation in (a). Use 2000 bootstrap samples.
+```{r}
+boot.ci(cor12, type = "bca")
+boot.ci(cor12, type = "perc")
+boot.ci(cor35, type = "bca")
+boot.ci(cor35, type= "perc")
+boot.ci(cor45, type = "bca")
+boot.ci(cor45, type = "perc")
+```
+
+### Problem 2. In this problem, we will design two simulation studies to check the performance of bootstrap estimate of standard error of sample mean. First, we will compare the bootstrap estimate of standard error of sample mean to the exact standard error of sample mean on differnt sample sizes. Next, we will compare the bootstrap estimate of standard error of sample mean to the exact standard error of sample mean on differnt distributions of sample. (Hint: exact standard error of sample mean is $\sigma/\sqrt{n}$ where $\sigma$ is a standard deviation.) 
+
+###### (a) Use the \texttt{rnorm()} function to genreate random samples of size 10, 50, and 100 from the normal distribution with mean 0 and standard deviation 2. Find the bootstrap estimate of standard error of sample mean for each sample size with 2000 bootstrap samples. Repeat this $R = 100$ times and calculate the following root-mean-squared error (RMSE) to compare the peformance of bootstrap estimate of standard error of sample mean on differnt sample sizes. Make a comment on your simulation reuslt.
+$$
+\mbox{RMSE} = \sqrt{\frac{1}{R}\sum_{r=1}^{R}\left(\mbox{SE}(\bar{x}) - \widehat{\mbox{SE}}_{r}(\bar{x}^{*})\right)^{2}}
+$$
+```{r}
+mean.fun <- function(data, index) {
+  mean(data[index])
+}
+
+norm10.sd <- replicate(100, {
+  obj <- boot(data = rnorm(10, mean = 0, sd = 2), statistic = mean.fun, R = 2000)
+  samp <- obj$t
+  sd(samp)
+})
+
+norm50.sd <- replicate(100, {
+  obj <- boot(data = rnorm(50, mean = 0, sd = 2), statistic = mean.fun, R = 2000)
+  samp <- obj$t
+  sd(samp)
+})
+
+norm100.sd <- replicate(100, {
+  obj <- boot(data = rnorm(100, mean = 0, sd = 2), statistic = mean.fun, R = 2000)
+  samp <- obj$t
+  sd(samp)
+})
+
+head(data.frame(norm10.sd, norm50.sd, norm100.sd))
+
+
+rmse <- function(boot.sd, sigma){
+  sqrt(sum((sigma/sqrt(length(boot.sd)) - boot.sd)^2)/length(boot.sd))
+}
+
+rmse(norm10.sd, 2)
+rmse(norm50.sd, 2)
+rmse(norm100.sd, 2)
+```
+
+As we can see above, as the sample size of the original normal sample generated increases, the RMSE decreases. 
+
+
+###### (b) Use the \texttt{rnorm()} function to genreate a random sample of size 100 from the standard normal distribution. Also, use the \texttt{rchisq()} function to generate a random sample of size 100 from the chi-squared distribtuion with degrees of freedom 3. Find the bootstrap estimate of standard error of sample mean for each distribution with 2000 bootstrap samples. Repeat this $R = 100$ times and calculate the root-mean-squared error (RMSE) to compare the peformance of bootstrap estimate of standard error of sample mean on differnt sample distributions. Make a comment on your simulation reuslt. (Hint: the variance of chi-squared distribution is equal to $2k$ where $k$ is degrees of freedom.)
+```{r}
+mean.fun <- function(data, index) {
+  mean(data[index])
+}
+
+normx.sd <-  replicate(100, {
+  obj <- boot(data = rnorm(100), statistic = mean.fun, R = 2000)
+  samp <- obj$t
+  sd(samp)
+})
+
+chisq.sd <-  replicate(100, {
+  obj <- boot(data = rchisq(100, df=3), statistic = mean.fun, R = 2000)
+  samp <- obj$t
+  sd(samp)
+})
+
+rmse <- function(boot.sd, sigma){
+  sqrt(sum((sigma/sqrt(length(boot.sd)) - boot.sd)^2)/length(boot.sd))
+}
+
+rmse(normx.sd, 1)
+rmse(chisq.sd, sqrt(6))
+```
+
+
+As we can see above, the RMSE of the normal distribution is smaller than that of the chi-square distribution. Meaning the bootstrap estimates are closer to the overall mean of the bootstrap estimates while the chi-square bootstraps have a higher RMSE, meaning the estimates are further from the overall mean of the bootstrap estimates. 

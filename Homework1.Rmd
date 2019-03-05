@@ -1,0 +1,103 @@
+---
+title: "Homework 1 (STAT 5860)"
+author: "Eric Pettengill"
+output: pdf_document
+---
+
+## Insturctions:
+
+1. Download the `Homework1.Rmd` file from the course Elearning.
+
+2. Open `Homework1.Rmd` in RStudio.
+
+3. Replace the *"Your Name Here"* text in the `author` with your own name.
+
+4. Write your answer to each problem by editing `Homework1.Rmd`.
+
+5. After you finish all the problems, click `Knit to PDF` to create a pdf file. Upload your pdf file to Homework 1 Dropbox in the course Elearning.
+
+### Loading packages
+
+```{r}
+library(MASS)
+library(tidyverse)
+library(forcats)
+```
+
+### Problem 1. For this problem we'll use the `diamonds` dataset from the `ggplot2` package. Use the functions inside `dplyr` and `ggplot2` packages to answer the following questions. 
+
+```{r}
+# Change the object of diamonds dataset from tibble to data frame.
+diamonds <- as.data.frame(diamonds)
+```
+
+##### (a) Draw the bar chart to display the total number of diamonds in the `diamonds` dataset, grouped by `color` grading.
+```{r, fig.width = 4, fig.height = 4}
+ggplot(diamonds) +
+  geom_bar(aes(x = color, fill = color))
+```
+
+##### (b) We call diamond is colorless if color grading is D, E, or F. Select colorless diamonds from the `diamonds` dataset and assign it to `colorless_diamonds` for later use.
+```{r}
+colorless_diamonds <- diamonds %>% 
+  filter(color %in% c("D", "E", "F"))
+```
+
+##### (c) Use `colorless_diamonds` data frame to recreate the uploaded *"The Value of Colorless Diamond"* plot.
+```{r, fig.width = 5, fig.height = 4}
+ggplot(colorless_diamonds, aes(x=carat, y=price, color=clarity)) +
+  geom_point() +
+  geom_smooth() +
+  ylab("Price(US Dollars)") +
+  xlab("Weight of the Diamond(carat)")
+```
+
+##### (d) The ideal depth for round diamond is between two percentages 59.5\% and 62.9\%, inclusive. Select the ideal depth diamonds from the `diamonds` dataset and assign it to `ideal_depth_diamonds` for later use.
+```{r}
+ideal_depth_diamonds <- diamonds %>% 
+  filter(depth >= 59.5 & depth <= 62.9)
+
+range(ideal_depth_diamonds$depth)
+```
+
+##### (e) Use `ideal_depth_diamonds` data frame to draw the histogram of the `depth` for each quality of the `cut` separately in one grpahic window. 
+```{r, fig.width = 5, fig.height = 4}
+ggplot(ideal_depth_diamonds, aes(x=depth)) +
+  geom_histogram() +
+  facet_wrap(~cut)
+```
+
+##### (f) The length and width ratio gives an idea how big or small the diamond will appear, also defining its shape. To calculate the length and width ratio just divide the length of the diamond by its width. Add a new variable named `LWratio` to the `diamonds` dataset and assign it to `LW_diamonds`.
+```{r}
+LW_diamonds <- diamonds %>% 
+  mutate(LWratio = x/y)
+
+head(LW_diamonds)
+```
+
+\bigskip
+
+### Problem 2. For this problem we'll use the `Cars93` dataset from the `MASS` package. Write down two interesting questions that you could answer with `Cars93` dataset, and use appropriate visualizations using \texttt{ggplot2} to answer them. Make sure at least one question should involve multiple variables.
+
+##### (a) Question 1: Which brands sell for more, i.e., what is the price distribution by brand?
+
+```{r, fig.width = 4, fig.height = 4}
+ggplot(data = Cars93, aes(x = fct_reorder(Manufacturer, Price), y = Price)) +
+  geom_boxplot() +
+  coord_flip()
+```
+
+##### (b) Question 2: Are Turn.circle and MPG.highway correlated and by what DriveTrain and Cylinders
+
+```{r, fig.width = 6, fig.height = 4}
+ggplot(Cars93, aes(x = Turn.circle, y = MPG.highway, color = Cylinders)) +
+  geom_point() +
+  facet_wrap(~DriveTrain)
+
+ggplot(Cars93, aes(x = Turn.circle, y = MPG.city, color = Cylinders)) +
+  geom_point() +
+  facet_wrap(~DriveTrain)
+```
+
+
+

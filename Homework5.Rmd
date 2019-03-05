@@ -1,0 +1,163 @@
+---
+title: "Homework 5 (STAT 5860)"
+author: "Your Name Here"
+date: "Due by 11:59 pm, Apr. 11, 2018"
+output:
+  pdf_document: default
+  word_document: default
+---
+
+## Insturctions:
+
+1. Download the `Homework5.Rmd` file from the course Elearning.
+
+2. Open `Homework5.Rmd` in RStudio.
+
+3. Replace the *"Your Name Here"* text in the `author` with your own name.
+
+4. Write your answer to each problem by editing `Homework5.Rmd`.
+
+5. After you finish all the problems, click `Knit to PDF` to create a pdf file. Upload your pdf file to Homework 5 Dropbox in the course Elearning.
+
+### Set the seed number
+```{r}
+set.seed(411)
+```
+
+### Problem 1. The Cauchy distribution with scale 1 has following density function
+$$
+f(x) = \frac{1}{\pi\left[1 + (x - \eta)^2\right]}, \quad -\infty < x < \infty.
+$$
+
+###### (a) Generate 100 random samples from a Cauchy distribution with $\eta = 1$. Here, $\eta$ is the location parameter.
+```{r}
+samps <- rcauchy(100, location = 1)
+```
+
+###### (b) Treat the random samples you get from (a) as sample observations from a Cauchy distribution with an unknown $\eta$. Plot the log-likelihood function of $\eta$.
+```{r}
+cauchL <- function(etta){
+  -sum(log(1+(samps - etta)^2))
+}
+
+cauchL <- Vectorize(cauchL)
+curve(cauchL, xlim = c(0,2))
+```
+
+###### (c) Use the bisection method to find the maximum likelihood estimator of $\eta$.
+```{r}
+cprime <- function(etta){
+  sum((2*(samps-etta))/(1+(samps-etta)^2))
+}
+cprime <- Vectorize(cprime)
+
+uniroot(cprime, c(0,4))$root
+```
+
+###### (d) Use the Newton's method to find the maximum likelihood estimator of $\eta$.
+```{r}
+cprime2 <- function(etta){
+  sum((4*(samps-etta)^2 - 2*(1 + (samps - etta)^2))/((1 + (samps - etta)^2)^2))
+}
+cprime2 <- Vectorize(cprime2)
+
+x <- 0
+
+for(i in 1:10){
+	xnew <- x - cprime(x)/cprime2(x)
+	x <- xnew
+	print(xnew, digits = 10)
+}
+```
+
+### Problem 2. In statistics, Poisson regression is a generalized linear model form of regression analysis used to model count data. In Poisson regression the dependent variable $Y$ is an observed count that follows the Poisson distribution. The rate $\lambda$ is determined by a set of predictors $\boldsymbol{X}$. Here, we focus on simple Poisson regression model
+$$
+\log \lambda = \beta_{0} + \beta_{1}X.
+$$ 
+
+### Solving for $\lambda$, we have
+$$
+\lambda = e^{\beta_{0} + \beta_{1}X}.
+$$
+
+### For each data point, we have predictor $x_{i}$ and an observed count $y_{i}$. Then the likelihood function is 
+$$
+L(\beta_{0}, \beta_{1}) = \prod_{i=1}^{n}\frac{e^{-e^{\beta_{0} + \beta_{1}x_{i}}}(e^{\beta_{0}+\beta_{1}x_{i}})^{y_{i}}}{y_{i}!}.
+$$
+
+### Our goal for the problem is obtaining the parameter estimates of Poission regression.
+
+###### (a) Load the data set uploaded in course Elearning. (Hint: To import .txt file into R, use \texttt{read.table()} function and you may need \texttt{header = T} also.)
+```{r}
+pois <- read.delim("poisson.txt")
+```
+
+###### (b) Use the Newton's method with initial value $\beta_{0} = 0$ and $\beta_{1} = 0$ to find the maximum likelihood estimator of $\beta_{0}$ and $\beta_{1}$.
+```{r}
+x <- pois$x
+y <- pois$y
+
+gradient <- function(y, x, beta0, beta1){
+  gradient <- rep(0, 2)
+  gradient[1] <- -sum(exp(beta0 + beta1*x))+sum(y)
+  gradient[2] <- -sum(exp(beta0 + beta1*x)*x)+sum(x*y)
+  return(gradient)
+}
+
+# Hessian of log-likelihood
+hessian <- function(y, x, beta0, beta1){
+  hessian <- matrix(0, nrow = 2, ncol = 2)
+  hessian[1,1] <- -sum(exp(beta0 + beta1*x))
+  hessian[2,2] <- -sum(exp(beta0 + beta1*x)*x^2)
+  hessian[1,2] <- -sum(exp(beta0 + beta1*x)*x)
+  hessian[2,1] <- hessian[1,2]
+  return(hessian)
+}
+
+# set initial value
+beta <- c(0,0)
+
+# run Netwon's method
+for(i in 1:10){
+  beta_new <- beta - solve(hessian(y = y, x = x, beta0 = beta[1], beta1 = beta[2])) %*% gradient(y = y, x = x, beta0 = beta[1], beta1 = beta[2])
+  beta <- beta_new
+  print(beta_new, digits = 7)
+}
+
+```
+
+###### (c) Now try differnt initial value $\beta_{0} = 0$ and $\beta_{1} = {1}$. Compare the result with (b). 
+```{r}
+beta <- c(0,1)
+
+for(i in 1:30){
+  beta_new <- beta - solve(hessian(y = y, x = x, beta0 = beta[1], beta1 = beta[2])) %*% gradient(y = y, x = x, beta0 = beta[1], beta1 = beta[2])
+  beta <- beta_new
+  print(beta_new, digits = 7)
+}
+```
+
+###### (d) When we want to run Poisson regression in R, we use \texttt{glm()} function with \texttt{family = poisson()}. Compare your parameter estimation results to \texttt{glm()} output.
+```{r}
+mod <- glm(y~x, family = poisson(), data = pois)
+summary(mod)$coefficients
+```
+
+
+The parameter estimates using Newton's method converge to the parameter estimates using the \texttt{glm()} output, however, changing the initial values slightly resulted in having to increase the number of iterations by approximately 3 times in order to get results.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
